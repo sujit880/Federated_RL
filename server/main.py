@@ -13,11 +13,15 @@ ALL_PARAMS={}
 SCORES={}
 U_TIME_STAMP = None
 WTS=30  # time in seconds to wait if not received the params from all the clients
-N_PUSH = 200
+N_PUSH = 100
 N_CLIENTS = 1 
 UPDATE_COUNT = 0
 MODEL_NAME = 'experiment_01'
-
+Log = True
+log_path = './server/logs/'
+log_file = 'server_logs.csv'
+path = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
+modman.csv_writer(path=path, data=[['Log for server']])
 now = datetime.now
 UMT=[] # Updating model time
 
@@ -37,7 +41,10 @@ MODEL_COMPLETE = False
 #Start  Supporting functions
 def register(add):
     global N_CLIENTS
+    global Log
     print("key:-> ", add, " Registered")
+    if Log:
+        modman.csv_writer(path=path, data=[["Client with key:-> ", add, " Registered"]])
     SCORES[add] = 1
     N_CLIENTS = len(SCORES)
 def add_score(add):
@@ -72,6 +79,8 @@ def collect_params():
     # print(dkeys)
     for key in dkeys:
         print("key:-> ", key, " Deleted")
+        if Log:
+            modman.csv_writer(path=path, data=[["Client with key:-> ", key, " Disconnected"]])
         del SCORES[key]
     N_CLIENTS = len(SCORES)
     return all_params
@@ -189,6 +198,8 @@ def post_params():
     global N_CLIENTS
     global N_PUSH
     global UPDATE_COUNT
+    global ITERATION
+    global MODEL_LOCK
 
     update_params = request.get_json()
 
@@ -216,11 +227,13 @@ def post_params():
     
     if len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now():   # U_TIME_STAMP<datetime.now() or
         sumt= now() # start time of model updation 
+        data=[]
         MODEL_LOCK = True
         print("Model lock...")
         print("Updating global model with clients params: ", len(ALL_PARAMS))
         list_of_params =   collect_params()
         if(len(list_of_params)>0): 
+            data.append([f'\nUpdating global parameters with params from {len(list_of_params)} client.'])
             set_model = update_model(list_of_params=list_of_params)
             
             for key, value in set_model.items():
@@ -236,20 +249,27 @@ def post_params():
             eumt = now()
             UMT.append(eumt-sumt)
             print('Updation time:->', eumt-sumt)
+            data.append([f'Time taken for updation:-> {eumt-sumt}'])
+            data.append([f'iteration: {ITERATION} Updated Global Model Params Complete.'])
+            if Log:
+                modman.csv_writer(path=path, data=data)
             MODEL_LOCK = False
             print("Release lock...")
-            return jsonify({'iteration': ITERATION, 'Message': 'Updated Global Model Params.'})
+            return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Updated Global Model Params.'})
         else: 
             eumt = now()
             UMT.append(eumt-sumt)
             print('Updation time:->', eumt-sumt)
             print('Could not update the model due to receiving invalid params.')
+            data.append(f'iteration: {ITERATION} Error! Global Model Params Updation Couldn\'t Complete.')
+            if Log:
+                modman.csv_writer(path=path, data=data)
             MODEL_LOCK = False
             print("Release lock...")
-            return jsonify({'iteration': ITERATION, 'Message': 'Could not update the model due to receiving invalid params.'})
+            return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Could not update the model due to receiving invalid params.'})
         
     # RETURN RESPONSE
-    return jsonify({'iteration': ITERATION, 'Message': 'Collected Model Params.'})
+    return jsonify({'iteration': ITERATION,'n_clients':-1, 'Message': 'Collected Model Params.'})
 
 
 if __name__ == "__main__":

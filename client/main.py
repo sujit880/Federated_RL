@@ -1,6 +1,7 @@
 # Import Libraries
 import math
 import datetime
+from os import getpid
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,8 +18,19 @@ import gym
 
 from copy import deepcopy
 
+import socket   
+
+hostname = socket.gethostname()   
+IPAddr = socket.gethostbyname(hostname) 
+
 
 now = datetime.datetime.now
+log_path = './client/logs/'
+log_file = 'client_logs.csv'
+log_testing = 'testing_logs.csv'
+
+path1 = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
+path2 = modman.increment_path(path=log_path+log_testing,exist_ok=False,mkdir=True)
 
 ##############################################
 # SETUP Hyperparameters
@@ -139,7 +151,7 @@ target = DQN.PIE(
     double=PIE_PARAMS.DOUBLE,
     tuf=PIE_PARAMS.TUF,
     seed=None)
-
+log_data=[]
 ##############################################
 # Fetch Initial Model Params (If Available)
 ##############################################
@@ -149,11 +161,16 @@ while modman.get_model_lock(URL):  # wait if model updation is going on
 global_params, n_push, is_available = modman.fetch_params(URL+'get')
 
 n_steps=n_push
-
+modman.csv_writer(path=path1,data=[[f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}']])
+modman.csv_writer(path=path2,data=[[f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}']])
 if is_available:
     P("Model exist")
     P("Loading Q params .....")
     P("Number Push: ", n_push)
+    log_data.append([f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}'])
+    log_data.append(["Model exist"])
+    log_data.append(['Loading Q params .......'])
+    log_data.append(["Number Push: ", n_push])
     pie.Q.load_state_dict(modman.convert_list_to_tensor(global_params))
     pie.Q.eval()
     P("Loading T params .....")
@@ -162,6 +179,9 @@ if is_available:
 else:
     P("Setting model for server")
     P("Number Push: ", n_push)
+    log_data.append([f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}'])
+    log_data.append(["Setting model for server"])
+    log_data.append(["Number Push: ", n_push])
     reply = modman.send_model_params(
         URL, modman.convert_tensor_to_list(pie.Q.state_dict()), PIE_PARAMS.LR)
     print(reply)
@@ -171,6 +191,7 @@ else:
 ##############################################
 P('#', 'Train')
 P('Start Training...')
+log_data.append(['Start Training...'])
 stamp = now()
 eps = []
 ref = []
@@ -178,7 +199,8 @@ c_d1 =[] # communication delay 1
 tpc = [] # Timeime per epoch
 tft = [] # Time for testing
 L_T = [] # Learning Time
-
+REW = [] # Rewards list
+REW.append([f'\n\nTesting Data for Client IPAddres: {IPAddr} Pid: {getpid()} ..'])
 max_reward1 = Queue(maxsize=100)
 
 P('after max_reward queue')
@@ -212,6 +234,7 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
                  modman.convert_tensor_to_list(pie.Q.state_dict()),
                  epoch+1)
                 print(reply)
+                log_data.append(reply)
                 
                 # Wait for Model Lock to get Released
                 while modman.get_model_lock(URL):
@@ -246,7 +269,7 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
             '[REW]'+str(trew),
             '[TR]'+str(pie.train_count),
             '[UP]'+str(pie.update_count))
-
+        REW.append(["Rew: ",trew, "Train_count: ", pie.train_count, "Update_count: ", pie.update_count])
         if(max_reward1.full()):
             if(np.mean(max_reward1.queue) >= 200):
                 break
@@ -268,3 +291,22 @@ P('MIN time for epoch:', np.min(tpc))
 P('MAX time for epoch:', np.max(tpc))
 P('Total time for epoch:->', np.sum(tpc))
 P('Total time for testing:->', np.sum(tft))
+
+# preparing log data
+log_data.append([f'\nTotal number of epochs: {epoch}'])
+log_data.append(['\nTime Elapsed:', elapse])
+log_data.append(['\nMean Learning Time:', np.mean(L_T)])
+log_data.append(['MAX Learning Time:', np.max(L_T)])
+log_data.append(['MIN Learning Time:', np.min(L_T)])
+log_data.append(['\nMean Communication Time:', np.mean(c_d1)])
+log_data.append(['MAX Communication Time:', np.max(c_d1)])
+log_data.append(['MIN Communication Time:', np.min(c_d1)])
+log_data.append(['\nTotal Learning Time:->', np.sum(L_T)])
+log_data.append(['\nTotal Communication delay:->', np.sum(c_d1)])
+log_data.append(['\nMean time for epoch:', np.mean(tpc)])
+log_data.append(['MIN time for epoch:', np.min(tpc)])
+log_data.append(['MAX time for epoch:', np.max(tpc)])
+log_data.append(['\nTotal time for epoch:->', np.sum(tpc)])
+log_data.append(['\nTotal time for testing:->', np.sum(tft)])
+modman.csv_writer(path=path1,data=log_data)
+modman.csv_writer(path=path2,data=REW)
