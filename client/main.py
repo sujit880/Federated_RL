@@ -1,4 +1,5 @@
 # Import Libraries
+from cmath import log
 import math
 import datetime
 from os import getpid
@@ -25,12 +26,6 @@ IPAddr = socket.gethostbyname(hostname)
 
 
 now = datetime.datetime.now
-log_path = './client/logs/'
-log_file = 'client_logs.csv'
-log_testing = 'testing_logs.csv'
-
-path1 = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
-path2 = modman.increment_path(path=log_path+log_testing,exist_ok=False,mkdir=True)
 
 ##############################################
 # SETUP Hyperparameters
@@ -158,9 +153,17 @@ log_data=[]
 while modman.get_model_lock(URL):  # wait if model updation is going on
                     print("Waiting for Model Lock Release.")
 
-global_params, n_push, is_available = modman.fetch_params(URL+'get')
+global_params, n_push, log_id, is_available = modman.fetch_params(URL+'get')
 
 n_steps=n_push
+
+log_path = './client/logs/'
+log_file = log_id+ 'client_logs.csv'
+log_testing = log_id+ 'testing_logs.csv'
+
+path1 = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
+path2 = modman.increment_path(path=log_path+log_testing,exist_ok=False,mkdir=True)
+
 modman.csv_writer(path=path1,data=[[f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}']])
 modman.csv_writer(path=path2,data=[[f'Log Data for Client IPAddres: {IPAddr} Pid: {getpid()}']])
 if is_available:
@@ -241,7 +244,7 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
                     print("Waiting for Model Lock Release.")
 
                 # Get Updated Model Params from Server
-                global_params, n_push, is_available = modman.fetch_params(URL + 'get')
+                global_params, n_push,_, is_available = modman.fetch_params(URL + 'get')
                 n_steps=n_push
                 pie.Q.load_state_dict(modman.convert_list_to_tensor(global_params))
                 pie.Q.eval()

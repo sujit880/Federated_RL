@@ -20,11 +20,11 @@ def fetch_params(url: str):
 
     # Check for Iteration Number (-1 Means, No model params is present on Server)
     if data['iteration'] == -1:
-        return {}, data['npush'], False
+        return {}, data['npush'], data['logs_id'], False
     else:
         if debug:
             print("Global Iteration", data['iteration'])
-        return data['params'], data['npush'], True
+        return data['params'], data['npush'], data['logs_id'], True
 # remove send gradient method as we are not dealing with gradients in FL
 
 # Send Trained Model Params (StateDict)

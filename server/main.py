@@ -21,6 +21,7 @@ Log = True
 log_path = './server/logs/'
 log_file = 'server_logs.csv'
 path = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
+log_id= path[len(log_path)-2:-4] 
 modman.csv_writer(path=path, data=[['Log for server']])
 now = datetime.now
 UMT=[] # Updating model time
@@ -128,7 +129,8 @@ def get_model():
         'npush': N_PUSH,
         'learning_rate': LEARNING_RATE,
         'iteration': ITERATION,
-        'model_name': MODEL_NAME
+        'model_name': MODEL_NAME,
+        'logs_id':log_id
     }
 
     return jsonify(payload)
