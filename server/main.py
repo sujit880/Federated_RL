@@ -1,16 +1,40 @@
+from pickle import GLOBAL
 from flask import Flask, Response, jsonify, request, render_template
 import modman
 from datetime import datetime, timedelta
 import json
 import torch
 
+# Client class to manage updates
+class CParamas:
+    client_key = None
+    model_id = None
+    epochs = None
+    params= {}
+    params_length = None
+    received_length = 0
+    # mem_size = None
+
+class G_model:
+    model_id = None
+    model_length = None
+    received_length = 0
+    iteration = None
+    steps = None
+    epochs = None
+    model= {}
+    lr= None
+    lock = None
 
 # GLOBAL VARS
-CENTRAL_MODEL = {}
-LEARNING_RATE = 0.001
+# CENTRAL_MODEL = {}
+# LEARNING_RATE = 0.001
+GLOBAL_MODEL = G_model()
+COMPLETE = True
 ITERATION = -1
 ALL_PARAMS={}
 SCORES={}
+LEARNING_RATE = None
 U_TIME_STAMP = None
 WTS=30  # time in seconds to wait if not received the params from all the clients
 N_PUSH = 100
@@ -20,20 +44,13 @@ MODEL_NAME = 'experiment_01'
 Log = True
 log_path = './server/logs/'
 log_file = 'server_logs.csv'
-path = modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True)
+path = str(modman.increment_path(path=log_path+log_file,exist_ok=False,mkdir=True))
 log_id= path[len(log_path)-2:-4] 
 modman.csv_writer(path=path, data=[['Log for server']])
 now = datetime.now
 UMT=[] # Updating model time
 
-# Client class to manage updates
-class CParamas:
-    client_key = None
-    # iteration = None
-    # steps = None
-    epochs = None
-    params= None
-    # mem_size = None
+    
 
 # LOCK VAR
 MODEL_LOCK = False
@@ -117,26 +134,40 @@ def hello():
 
 @app.route('/api/model/get', methods=['GET'])
 def get_model():
+    print("inside get model")
     data = request.get_json()
-    global CENTRAL_MODEL
+    global GLOBAL_MODEL
     global LEARNING_RATE
     global ITERATION
     global N_PUSH
     global MODEL_NAME
-    print(f'Sending Global model to: Pid = {data["pid"]} : {request.remote_addr}')
-    payload = {
-        'params': modman.convert_tensor_to_list(CENTRAL_MODEL),
+    layer_name= data['layer_name']
+    if layer_name not in GLOBAL_MODEL.model.keys():
+        payload = {
+        'lr_params': {},
         'npush': N_PUSH,
         'learning_rate': LEARNING_RATE,
-        'iteration': ITERATION,
+        'iteration': -1,
         'model_name': MODEL_NAME,
         'logs_id':log_id
-    }
+        }
+        return jsonify(payload)
+    else:
+        print(f'Sending Global model to: Pid = {data["pid"]} : {request.remote_addr}')
+        payload = {
+            'lr_params': GLOBAL_MODEL.model[layer_name].tolist(),
+            'npush': N_PUSH,
+            'learning_rate': LEARNING_RATE,
+            'iteration': ITERATION,
+            'model_name': MODEL_NAME,
+            'logs_id':log_id
+        }
 
-    return jsonify(payload)
+        return jsonify(payload)
 
 @app.route('/api/model/getLock', methods=['GET'])
 def get_lock():
+    print("inside lock")
     global MODEL_LOCK
     global MODEL_COMPLETE
     payload = {
@@ -164,37 +195,68 @@ def set_complete():
 
 @app.route('/api/model/set', methods=['POST'])
 def set_model():
-
+    print("inside set model")
     params = request.get_json()
 
-    print(
-        f'Got Model Params from Client ID = {params["pid"]} IP Address = {request.remote_addr}')
-    global CENTRAL_MODEL
+    global GLOBAL_MODEL
     global ITERATION
     global LEARNING_RATE
-    if ITERATION>=0:
+    global COMPLETE
+    print(
+        f'Got Model Params from Client ID = {params["pid"]} IP Address = {request.remote_addr}, Iteration: {ITERATION}, Complete? {COMPLETE}')
+    if ITERATION>0:
         return jsonify({'iteration': ITERATION, 'Message': 'Error Model Already exist.'})
 
     # Update ITERATION
-    ITERATION += 1
+    if COMPLETE:
+        ITERATION += 1
 
     # Set CENTRAL MODEL params
     set_model = params['model']
     MODEL_LOCK=True
     LEARNING_RATE = params['learning_rate']
-    if ITERATION <= 0:
+    if ITERATION == 0:
         for key, value in set_model.items():
-            CENTRAL_MODEL[key] = torch.Tensor(value)
+            layer_name, Layer_count, total_length= key, params['send_length'], params['layer_length']
+            print("set layer: ", layer_name, Layer_count, total_length)
+            if(GLOBAL_MODEL.received_length == 0 and  Layer_count==1):
+                COMPLETE = False
+                GLOBAL_MODEL.model_id = params['model_id']
+                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.model_length = total_length
+                GLOBAL_MODEL.received_length += 1
+                GLOBAL_MODEL.lr = LEARNING_RATE
+                GLOBAL_MODEL.iteration = 0
+                GLOBAL_MODEL.epochs = 0
+                GLOBAL_MODEL.steps = N_PUSH
+                GLOBAL_MODEL.lock = True
+                return jsonify({'iteration': ITERATION, 'Message': 'first Layer set.'})
+            if(GLOBAL_MODEL.received_length+1 ==  total_length and Layer_count == total_length):
+                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.received_length = Layer_count
+                GLOBAL_MODEL.lock = False
+                COMPLETE = True
+
+            elif(GLOBAL_MODEL.received_length+1 ==  Layer_count):
+                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.received_length = Layer_count
+            
+            else:
+                return jsonify({'iteration': -1, 'Message': 'Wrong chunck send aborted setup.'})
+
+
+
     MODEL_LOCK=False
     # RETURN RESPONSE
-    return jsonify({'iteration': ITERATION, 'Message': 'Model Params Set.'})
+    return jsonify({'iteration': ITERATION, 'Message': 'Model Params layer Set.'})
 
 
 
 @app.route('/api/model/post_params', methods=['POST'])
 def post_params():
+    print("inside post params")
     global ALL_PARAMS
-    global CENTRAL_MODEL
+    global GLOBAL_MODEL
     global U_TIME_STAMP #updating time stamp
     global WTS #waiting time stamp
     global N_CLIENTS
@@ -202,20 +264,45 @@ def post_params():
     global UPDATE_COUNT
     global ITERATION
     global MODEL_LOCK
+    global COMPLETE
 
     update_params = request.get_json()
 
     c_key=request.remote_addr+":"+str(update_params["pid"])
     print("\nadd score:->",add_score(c_key))
+    if c_key in ALL_PARAMS.keys():
+        c_params = CParamas()
+        c_params.client_key=c_key
+        c_params.epochs = update_params['update_count']
+        c_params.model_id = update_params['model_id']
+        model_chunck = update_params['model']
+        ALL_PARAMS[c_key]=c_params
+    c_params = ALL_PARAMS[c_key]
+    for key, value in model_chunck.items():
+        layer_name, Layer_count, total_length= key, update_params['layer_length'], update_params['send_length']
+            
+        if(c_params.received_length == 0 and  Layer_count==1):
+            COMPLETE = False
+            c_params.model_id = update_params['model_id']
+            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.received_length += 1
+            c_params.params_length = total_length
+        if(c_params.received_length+1 ==  total_length and Layer_count == total_length):
+            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.received_length = Layer_count
+            COMPLETE = True
 
-    c_params = CParamas()
-    c_params.client_key=c_key
-    c_params.epochs = update_params['update_count']
-    c_params.params=update_params['model']
+        elif(c_params.received_length+1 ==  Layer_count):
+            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.received_length = Layer_count
+            
+        else:
+            return jsonify({'iteration': -1, 'Message': 'Wrong chunck send aborted posting params.'})
+
     # c_params.mem_size=update_params['mem_size']
     # c_params.iteration=update_params['iteration']
 
-    print(f'Got Parameters from Client ID = {update_params["pid"]} IP Address = {request.remote_addr}')
+    print(f'Got Parameters chunck {c_params.received_length}/ {c_params.params_length} from Client ID = {update_params["pid"]} IP Address = {request.remote_addr}')
 
     # Storing params
     ALL_PARAMS[c_key]=c_params
@@ -227,7 +314,7 @@ def post_params():
 
     # Execute Federated Averaging if Accumulated Params is full
     
-    if len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now():   # U_TIME_STAMP<datetime.now() or
+    if len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now() and COMPLETE:   # U_TIME_STAMP<datetime.now() or
         sumt= now() # start time of model updation 
         data=[]
         MODEL_LOCK = True
@@ -239,13 +326,13 @@ def post_params():
             set_model = update_model(list_of_params=list_of_params)
             
             for key, value in set_model.items():
-                CENTRAL_MODEL[key] = torch.Tensor(value)
+                GLOBAL_MODEL.model = torch.Tensor(value)
             
             # Empty Accumulated Params
             ALL_PARAMS={}
             print("Cleared All Params: ", len(ALL_PARAMS))
             # Save Model
-            with open(f'./server/models/{MODEL_NAME}.json', 'w') as f:
+            with open(f'./models/{MODEL_NAME}.json', 'w') as f:
                 json.dump(modman.convert_tensor_to_list(CENTRAL_MODEL), f)
             # RETURN RESPONSE
             eumt = now()

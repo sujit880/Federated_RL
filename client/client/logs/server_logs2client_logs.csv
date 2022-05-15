@@ -1,0 +1,92 @@
+Log Data for Client IPAddres: 172.16.186.232 Pid: 9448
+Log Data for Client IPAddres: 172.16.186.232 Pid: 9448
+Setting model for server
+Number Push: ,100
+Start Training...
+iteration ,1,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,2,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,3,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,4,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,5,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,6,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,7,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,8,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,9,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,10,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,11,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,12,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,13,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,14,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,15,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,16,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,17,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,18,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,19,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,20,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,21,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,22,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,23,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,24,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,25,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,26,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,27,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,28,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,29,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,30,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,31,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,32,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,33,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,34,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,35,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,36,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,37,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,38,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,39,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,40,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,41,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,42,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,43,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,44,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,45,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,46,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,47,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,48,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,49,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,50,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,51,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,52,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,53,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,54,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,55,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,56,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,57,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,58,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,59,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,60,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,61,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,62,No of clients perticipant in the updation,1,Updated Global Model Params.
+iteration ,63,No of clients perticipant in the updation,1,Updated Global Model Params.
+"
+Total number of epochs: 6319"
+"
+Time Elapsed:",0:07:36.496022
+"
+Mean Learning Time:",0:00:00.004223
+MAX Learning Time:,0:00:00.007023
+MIN Learning Time:,0:00:00.002985
+"
+Mean Communication Time:",0:00:06.233399
+MAX Communication Time:,0:00:06.300308
+MIN Communication Time:,0:00:06.208574
+"
+Total Learning Time:->",0:00:00.266049
+"
+Total Communication delay:->",0:06:32.704122
+"
+Mean time for epoch:",0:00:00.067229
+MIN time for epoch:,0:00:00
+MAX time for epoch:,0:00:06.306297
+"
+Total time for epoch:->",0:07:04.884523
+"
+Total time for testing:->",0:00:31.495841

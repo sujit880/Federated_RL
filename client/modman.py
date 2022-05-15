@@ -40,8 +40,9 @@ def get_model_lock(url: str) -> bool:
 
     return data['lock'] 
 
-def send_local_update(url: str, params: dict, train_count: int):
+def send_local_update(url: str, params: dict, train_count: int, model_id: str):
     body = {
+        'model_id': model_id,
         'model': params,
         'pid': getpid(),
         'update_count': train_count
@@ -55,8 +56,9 @@ def send_local_update(url: str, params: dict, train_count: int):
     return (["iteration ", data['iteration'], "No of clients perticipant in the updation", data['n_clients'], data['Message']])
 
 
-def send_model_params(url: str, params: dict, lr: float):
+def send_model_params(url: str, params: dict, lr: float, model_id: str):
     body = {
+        'model_id': model_id,
         'model': params,
         'learning_rate': lr,
         'pid': getpid()

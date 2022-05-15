@@ -35,14 +35,14 @@ ENV_NAME = 'CartPole-v0'
 
 # For test locally -> ..
 # API endpoint
-#URL = "http://localhost:5500/api/model/"  # Un comment this line if you wanna test locally
+URL = "http://localhost:5500/api/model/"  # Un comment this line if you wanna test locally
 # ..
 
 # For test in the server and sepertade clients ...
 
 ip_address = "172.16.26.15"  # server macine ip address
 # API endpoint
-URL = "http://"+ip_address+":5500/api/model/"
+# URL = "http://"+ip_address+":5500/api/model/"
 
 # ..
 
@@ -151,7 +151,7 @@ log_data=[]
 # Fetch Initial Model Params (If Available)
 ##############################################
 while modman.get_model_lock(URL):  # wait if model updation is going on
-                    print("Waiting for Model Lock Release.")
+    print("Waiting for Model Lock Release.")
 
 global_params, n_push, log_id, is_available = modman.fetch_params(URL+'get')
 
