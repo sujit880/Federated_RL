@@ -33,6 +33,7 @@ GLOBAL_MODEL = G_model()
 COMPLETE = True
 ITERATION = -1
 ALL_PARAMS={}
+ALL_PARAMS_CNT = 0
 SCORES={}
 LEARNING_RATE = None
 U_TIME_STAMP = None
@@ -266,6 +267,7 @@ def post_params():
     global ITERATION
     global MODEL_LOCK
     global COMPLETE
+    global ALL_PARAMS_CNT
 
     update_params = request.get_json()
 
@@ -293,6 +295,7 @@ def post_params():
             c_params.received_length = Layer_count
             print("Recived all layers for client: ", c_params.client_key)
             COMPLETE = True
+            ALL_PARAMS_CNT +=1
 
         elif(c_params.received_length+1 ==  Layer_count):
             c_params.params[layer_name]= torch.tensor(value)
@@ -312,12 +315,12 @@ def post_params():
     # Set Global Update Count
     UPDATE_COUNT += update_params['update_count']
 
-    if (len(ALL_PARAMS))==1:
+    if (ALL_PARAMS_CNT)==1:
         U_TIME_STAMP=datetime.now()+timedelta(seconds=WTS)
 
     # Execute Federated Averaging if Accumulated Params is full
     
-    if (len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+    if (ALL_PARAMS_CNT ==N_CLIENTS or U_TIME_STAMP<datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
         sumt= now() # start time of model updation 
         data=[]
         print("Complete? ", COMPLETE)
@@ -334,6 +337,7 @@ def post_params():
             
             # Empty Accumulated Params
             ALL_PARAMS={}
+            ALL_PARAMS_CNT = 0
             print("Cleared All Params: ", len(ALL_PARAMS))
             # Save Model
             with open(f'./models/{MODEL_NAME}.json', 'w') as f:
