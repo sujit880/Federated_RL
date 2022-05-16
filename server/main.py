@@ -222,7 +222,7 @@ def set_model():
             if(GLOBAL_MODEL.received_length == 0 and  Layer_count==1):
                 COMPLETE = False
                 GLOBAL_MODEL.model_id = params['model_id']
-                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.model[layer_name]= torch.tensor(value)
                 GLOBAL_MODEL.model_length = total_length
                 GLOBAL_MODEL.received_length += 1
                 GLOBAL_MODEL.lr = LEARNING_RATE
@@ -232,14 +232,14 @@ def set_model():
                 GLOBAL_MODEL.lock = True
                 return jsonify({'iteration': ITERATION, 'Message': 'first Layer set.'})
             if(GLOBAL_MODEL.received_length+1 ==  total_length and Layer_count == total_length):
-                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.model[layer_name]= torch.tensor(value)
                 GLOBAL_MODEL.received_length = Layer_count
                 GLOBAL_MODEL.lock = False
                 COMPLETE = True
                 return jsonify({'iteration': ITERATION, 'Message': 'Model Params layer Set.'})
 
             elif(GLOBAL_MODEL.received_length+1 ==  Layer_count):
-                GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
+                GLOBAL_MODEL.model[layer_name]= torch.tensor(value)
                 GLOBAL_MODEL.received_length = Layer_count
             
             else:
@@ -285,17 +285,17 @@ def post_params():
         if(c_params.received_length == 0 and  Layer_count==1):
             COMPLETE = False
             c_params.model_id = update_params['model_id']
-            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.params[layer_name]= torch.tensor(value)
             c_params.received_length += 1
             c_params.params_length = total_length
         elif(c_params.received_length+1 ==  total_length and Layer_count == total_length):
-            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.params[layer_name]= torch.tensor(value)
             c_params.received_length = Layer_count
             print("Recived all layers for client: ", c_params.client_key)
             COMPLETE = True
 
         elif(c_params.received_length+1 ==  Layer_count):
-            c_params.params[layer_name]= torch.Tensor(value)
+            c_params.params[layer_name]= torch.tensor(value)
             c_params.received_length = Layer_count
             COMPLETE = False
             
@@ -330,7 +330,7 @@ def post_params():
             set_model = update_model(list_of_params=list_of_params)
             
             for key, value in set_model.items():
-                GLOBAL_MODEL.model[key] = torch.Tensor(value)
+                GLOBAL_MODEL.model[key] = torch.tensor(value)
             
             # Empty Accumulated Params
             ALL_PARAMS={}
