@@ -58,7 +58,7 @@ if __name__ == '__main__':
     global_params, n_push, log_id, is_available = modman.fetch_params(URL+'get', list(model_ft.state_dict().keys()))
     print("After fetch Params")
 
-
+    print("NPUSH: ", n_push)
 
     if is_available:
         P("Model exist")
@@ -70,11 +70,11 @@ if __name__ == '__main__':
     else:
         P("Setting model for server")
         lst_params = modman.convert_tensor_to_list(model_ft.state_dict())
-        global_params, n_push, log_id, Iteration = modman.send_model_params(
+        reply = modman.send_model_params(
             URL, lst_params, 0.001, ALIAS)
         del lst_params
         del global_params
-        P("Number Push: ", n_push)
+        P("Reply ", reply)
         
         # print(reply)
     n_steps=n_push
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         lst_params = modman.convert_tensor_to_list(model_ft.state_dict())
         reply = modman.send_local_update(URL + 'post_params',
                  lst_params,
-                 epoch+1, ALIAS)
+                 epoch+n_push, ALIAS)
         print(reply, "\n Local update sent")
         epoch=epoch+n_push
         while modman.get_model_lock(URL):
@@ -100,6 +100,6 @@ if __name__ == '__main__':
         model_ft.load_state_dict(modman.convert_list_to_tensor(global_params))
         model_ft.eval()
         del global_params
-        if epoch>1000:
+        if epoch>10:
             print("Trained 1000 epochs")
             break;

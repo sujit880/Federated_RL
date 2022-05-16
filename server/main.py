@@ -36,8 +36,8 @@ ALL_PARAMS={}
 SCORES={}
 LEARNING_RATE = None
 U_TIME_STAMP = None
-WTS=30  # time in seconds to wait if not received the params from all the clients
-N_PUSH = 100
+WTS=900  # time in seconds to wait if not received the params from all the clients
+N_PUSH = 2
 N_CLIENTS = 1 
 UPDATE_COUNT = 0
 MODEL_NAME = 'experiment_01'
@@ -236,6 +236,7 @@ def set_model():
                 GLOBAL_MODEL.received_length = Layer_count
                 GLOBAL_MODEL.lock = False
                 COMPLETE = True
+                return jsonify({'iteration': ITERATION, 'Message': 'Model Params layer Set.'})
 
             elif(GLOBAL_MODEL.received_length+1 ==  Layer_count):
                 GLOBAL_MODEL.model[layer_name]= torch.Tensor(value)
@@ -270,31 +271,33 @@ def post_params():
 
     c_key=request.remote_addr+":"+str(update_params["pid"])
     print("\nadd score:->",add_score(c_key))
-    if c_key in ALL_PARAMS.keys():
+    if c_key not in ALL_PARAMS.keys():
         c_params = CParamas()
         c_params.client_key=c_key
         c_params.epochs = update_params['update_count']
         c_params.model_id = update_params['model_id']
-        model_chunck = update_params['model']
         ALL_PARAMS[c_key]=c_params
     c_params = ALL_PARAMS[c_key]
+    model_chunck = update_params['model']
     for key, value in model_chunck.items():
-        layer_name, Layer_count, total_length= key, update_params['layer_length'], update_params['send_length']
-            
+        layer_name, Layer_count, total_length= key, update_params['send_length'], update_params['layer_length']
+        print("layer_name, Layer_count, total_length", layer_name, Layer_count, total_length)
         if(c_params.received_length == 0 and  Layer_count==1):
             COMPLETE = False
             c_params.model_id = update_params['model_id']
             c_params.params[layer_name]= torch.Tensor(value)
             c_params.received_length += 1
             c_params.params_length = total_length
-        if(c_params.received_length+1 ==  total_length and Layer_count == total_length):
+        elif(c_params.received_length+1 ==  total_length and Layer_count == total_length):
             c_params.params[layer_name]= torch.Tensor(value)
             c_params.received_length = Layer_count
+            print("Recived all layers for client: ", c_params.client_key)
             COMPLETE = True
 
         elif(c_params.received_length+1 ==  Layer_count):
             c_params.params[layer_name]= torch.Tensor(value)
             c_params.received_length = Layer_count
+            COMPLETE = False
             
         else:
             return jsonify({'iteration': -1, 'Message': 'Wrong chunck send aborted posting params.'})
@@ -314,9 +317,10 @@ def post_params():
 
     # Execute Federated Averaging if Accumulated Params is full
     
-    if len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now() and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+    if (len(ALL_PARAMS)==N_CLIENTS or U_TIME_STAMP<datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
         sumt= now() # start time of model updation 
         data=[]
+        print("Complete? ", COMPLETE)
         MODEL_LOCK = True
         print("Model lock...")
         print("Updating global model with clients params: ", len(ALL_PARAMS))
@@ -326,14 +330,14 @@ def post_params():
             set_model = update_model(list_of_params=list_of_params)
             
             for key, value in set_model.items():
-                GLOBAL_MODEL.model = torch.Tensor(value)
+                GLOBAL_MODEL.model[key] = torch.Tensor(value)
             
             # Empty Accumulated Params
             ALL_PARAMS={}
             print("Cleared All Params: ", len(ALL_PARAMS))
             # Save Model
             with open(f'./models/{MODEL_NAME}.json', 'w') as f:
-                json.dump(modman.convert_tensor_to_list(CENTRAL_MODEL), f)
+                json.dump(modman.convert_tensor_to_list(GLOBAL_MODEL.model), f)
             # RETURN RESPONSE
             eumt = now()
             UMT.append(eumt-sumt)
@@ -358,7 +362,7 @@ def post_params():
             return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Could not update the model due to receiving invalid params.'})
         
     # RETURN RESPONSE
-    return jsonify({'iteration': ITERATION,'n_clients':-1, 'Message': 'Collected Model Params.'})
+    return jsonify({'iteration': ITERATION,'n_clients':N_CLIENTS, 'Message': 'Collected Model Params.'})
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ def fetch_params(url: str, layers: list):
         else:
             if debug:
                 print("Global Iteration", data['iteration'])
-            params[x]= data['params']
+            params[x]= data['lr_params']
         del data
     if (len(params.keys()) == len(layers)):        
         return params, npush, logs_id, True
@@ -64,9 +64,9 @@ def send_local_update(url: str, params: dict, train_count: int, model_id: str):
         body = {
         'model_id': model_id,
         'model': dict_,
-        'learning_rate': lr,
         'layer_length' : len(keys),
         'send_length' : i+1,
+        'update_count' : train_count,
         'pid': getpid()
         }
             # Send POST request
@@ -105,7 +105,7 @@ def send_model_params(url: str, params: dict, lr: float, model_id: str):
         # Extract data in json format
         data = r.json()
         print(data['Message'])
-    return data    
+    return data #['n_push'], data['log_id'],     
 
 # Convert State Dict List to Tensor
 def convert_list_to_tensor(params: dict) -> dict:
