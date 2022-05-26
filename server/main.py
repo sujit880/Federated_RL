@@ -4,14 +4,15 @@ import modman
 from datetime import datetime, timedelta
 import json
 import torch
+from copy import deepcopy
 
 # Client class to manage updates
 class CParamas:
     client_key = None
     model_id = None
     epochs = None
-    params = {}
-    bid = {}
+    params = None
+    bid = None
     params_length = None
     received_length = 0
     # mem_size = None
@@ -276,12 +277,16 @@ def post_params():
     c_key=request.remote_addr+":"+str(update_params["pid"])
     bid_score = update_params['bid']
     print(f"Client: {c_key}, bid: {str(bid_score)}")
-    print("\nadd score:->",add_score(c_key))
+    
     if c_key not in ALL_PARAMS.keys():
+        print("\nadd score:->",add_score(c_key))
         c_params = CParamas()
+        print("C_params object created", c_params.client_key, c_params.bid)
         c_params.client_key=c_key
         c_params.epochs = update_params['update_count']
         c_params.model_id = update_params['model_id']
+        c_params.params={}
+        c_params.bid={}
         ALL_PARAMS[c_key]=c_params
     c_params = ALL_PARAMS[c_key]
     model_chunck = update_params['model']
@@ -294,12 +299,14 @@ def post_params():
             c_params.model_id = update_params['model_id']
             c_params.params[layer_name] = torch.tensor(value)
             c_params.bid[layer_name] = bid_score
+            # print("After assifnment bid score:", c_params.bid[layer_name], "bid_score", bid_score)
             c_params.received_length += 1
             c_params.params_length = total_length
         elif(c_params.received_length+1 ==  total_length and Layer_count == total_length):
             print("second if")
             c_params.params[layer_name]= torch.tensor(value)
             c_params.bid[layer_name] = bid_score
+            # print("After assifnment bid score:", c_params.bid[layer_name], "bid_score", bid_score)
             c_params.received_length = Layer_count
             print("Recived all layers for client: ", c_params.client_key)
             COMPLETE = True
@@ -311,6 +318,7 @@ def post_params():
             print("third if")
             c_params.params[layer_name]= torch.tensor(value)
             c_params.bid[layer_name] = bid_score
+            # print("After assifnment bid score:", c_params.bid[layer_name], "bid_score", bid_score)
             c_params.received_length = Layer_count
             COMPLETE = False
             
@@ -318,14 +326,17 @@ def post_params():
             print("else")
             print(f"Wrong chunk: {c_params.received_length}/ {c_params.params_length}")
             return jsonify({'iteration': -1, 'Message': 'Wrong chunck send aborted posting params.'})
-
+        # ALL_PARAMS[c_key]=c_params
+       
     # c_params.mem_size=update_params['mem_size']
     # c_params.iteration=update_params['iteration']
 
     print(f'Got Parameters chunck {c_params.received_length}/ {c_params.params_length} from Client ID = {update_params["pid"]} IP Address = {request.remote_addr}')
 
     # Storing params
-    ALL_PARAMS[c_key]=c_params
+    ALL_PARAMS[c_key]=deepcopy(c_params)
+    print("key", c_key, " All params ckey", ALL_PARAMS[c_key].client_key, "\nbid ", ALL_PARAMS[c_key].bid)
+    del c_params
     # Set Global Update Count
     UPDATE_COUNT += update_params['update_count']
 

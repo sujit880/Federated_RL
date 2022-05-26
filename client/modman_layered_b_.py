@@ -60,7 +60,7 @@ def send_local_update(url: str, params: dict, bid: dict, train_count: int, model
     for i in range (len(keys)):
         dict_ = {}
         dict_[keys[i]] = values[i]
-        print(dict_.keys()) 
+        # print(dict_.keys()) 
         body = {
         'model_id': model_id,
         'model': dict_,

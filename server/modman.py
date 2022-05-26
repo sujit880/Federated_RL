@@ -130,7 +130,7 @@ def baffle_update(list_of_params):
     average_gradient={}
     max={}
     total_sample=0
-    print(f"number of client {str(len(list_of_params))}")
+    print(f"Number of client {str(len(list_of_params))}")
     for indices in range(len(list_of_params)):
         keys = list(list_of_params[indices][0].keys())
         if indices == 0:
@@ -144,8 +144,9 @@ def baffle_update(list_of_params):
                 if max[key][0]<list_of_params[indices][1][key]:
                     max[key]=[list_of_params[indices][1][key], indices]
     
-    print("final", max)
+    print("Final", max)
     keys = list(max.keys())
     for key in keys:
-        average_gradient[key] = list_of_params[indices][0][key]
+        print(f"Indices {str(max[key][1])} , key {key}")
+        average_gradient[key] = list_of_params[max[key][1]][0][key]
     return average_gradient

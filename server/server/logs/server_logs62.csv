@@ -1,0 +1,11 @@
+Log for server
+Client with key:-> ,127.0.0.1:18108, Registered
+Client with key:-> ,127.0.0.1:5300, Registered
+"
+Updating global parameters with params from 2 client."
+Time taken for updation:-> 0:00:00.009831
+iteration: 1 Updated Global Model Params Complete.
+"
+Updating global parameters with params from 2 client."
+Time taken for updation:-> 0:00:00.007808
+iteration: 2 Updated Global Model Params Complete.
