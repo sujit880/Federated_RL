@@ -12,7 +12,7 @@ import relearn.pies.dqn as DQN
 from relearn.explore import EXP, MEM
 from relearn.pies.utils import compare_weights
 
-import modman
+import modman_layered_b_ as modman
 
 from queue import Queue
 import gym
@@ -61,7 +61,7 @@ EXP_PARAMS.DECAY_ADD = 0
 
 
 PIE_PARAMS = INFRA()
-PIE_PARAMS.LAYERS = [128, 128, 128]
+PIE_PARAMS.LAYERS = [8, 8, 8]
 PIE_PARAMS.OPTIM = torch.optim.RMSprop # 1. RMSprop, 2. Adam, 3. SGD
 PIE_PARAMS.LOSS = torch.nn.MSELoss
 PIE_PARAMS.LR = 0.001
@@ -153,7 +153,7 @@ log_data=[]
 while modman.get_model_lock(URL):  # wait if model updation is going on
     print("Waiting for Model Lock Release.")
 
-global_params, n_push, log_id, is_available = modman.fetch_params(URL+'get')
+global_params, n_push, log_id, is_available = modman.fetch_params(URL+'get', list(pie.Q.state_dict().keys()))
 
 n_steps=n_push
 
@@ -186,7 +186,7 @@ else:
     log_data.append(["Setting model for server"])
     log_data.append(["Number Push: ", n_push])
     reply = modman.send_model_params(
-        URL, modman.convert_tensor_to_list(pie.Q.state_dict()), PIE_PARAMS.LR)
+        URL, modman.convert_tensor_to_list(pie.Q.state_dict()), PIE_PARAMS.LR, ALIAS)
     print(reply)
 
 ##############################################
@@ -218,6 +218,7 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
     _ = exp.explore(pie, moves=TRAIN_PARAMS.MOVES,
                     decay=decayF, episodic=TRAIN_PARAMS.EPISODIC)
 
+    global_params = deepcopy( pie.Q.state_dict() ) #as in this position global params is loaded in every case
     if exp.memory.count > TRAIN_PARAMS.MIN_MEM:
 
         for _ in range(TRAIN_PARAMS.LEARN_STEPS):
@@ -231,11 +232,11 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
                 L_T.append(lt2-lt1)
                 lt1=now() # setting new initial learning time
                 t1=now() #time stamp at the start time for communication
-
+                bid_score = modman.calculate_score(global_params,pie.Q.state_dict())
                 # Sending Locally Trained Params
                 reply = modman.send_local_update(URL + 'post_params',
-                 modman.convert_tensor_to_list(pie.Q.state_dict()),
-                 epoch+1)
+                 modman.convert_tensor_to_list(pie.Q.state_dict()),modman.convert_tensor_to_list(bid_score),
+                 epoch+1, ALIAS)
                 print(reply)
                 log_data.append(reply)
                 
@@ -244,7 +245,7 @@ for epoch in range(0, TRAIN_PARAMS.EPOCHS):
                     print("Waiting for Model Lock Release.")
 
                 # Get Updated Model Params from Server
-                global_params, n_push,_, is_available = modman.fetch_params(URL + 'get')
+                global_params, n_push,_, is_available = modman.fetch_params(URL + 'get', list(pie.Q.state_dict().keys()))
                 n_steps=n_push
                 pie.Q.load_state_dict(modman.convert_list_to_tensor(global_params))
                 pie.Q.eval()

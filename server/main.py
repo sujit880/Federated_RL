@@ -10,7 +10,8 @@ class CParamas:
     client_key = None
     model_id = None
     epochs = None
-    params= {}
+    params = {}
+    bid = {}
     params_length = None
     received_length = 0
     # mem_size = None
@@ -37,8 +38,8 @@ ALL_PARAMS_CNT = 0
 SCORES={}
 LEARNING_RATE = None
 U_TIME_STAMP = None
-WTS=900  # time in seconds to wait if not received the params from all the clients
-N_PUSH = 2
+WTS=90  # time in seconds to wait if not received the params from all the clients
+N_PUSH = 50
 N_CLIENTS = 1 
 UPDATE_COUNT = 0
 MODEL_NAME = 'experiment_01'
@@ -74,7 +75,8 @@ def add_score(add):
         return 1
 def correctness(client_params):
     if SCORES[client_params.client_key] >0 and client_params.params != None:
-        return True, [client_params.params, client_params.epochs]
+        print(f"client: {str(client_params.client_key)} ,Bids:  {str(client_params.bid)}")
+        return True, [client_params.params, client_params.bid]
     else:
         return False, []
 def collect_params():
@@ -112,7 +114,7 @@ def update_model(list_of_params):
     ITERATION += 1
 
     # Apply Gradients and Update CENTRAL MODEL
-    F_MODEL = modman.Federated_average(list_of_params)
+    F_MODEL = modman.baffle_update(list_of_params)
     # # ALL_PARAMS = {}
     # print("Deleting all params after federated average")
     # dkeys=list(ALL_PARAMS.keys())
@@ -272,6 +274,8 @@ def post_params():
     update_params = request.get_json()
 
     c_key=request.remote_addr+":"+str(update_params["pid"])
+    bid_score = update_params['bid']
+    print(f"Client: {c_key}, bid: {str(bid_score)}")
     print("\nadd score:->",add_score(c_key))
     if c_key not in ALL_PARAMS.keys():
         c_params = CParamas()
@@ -285,24 +289,34 @@ def post_params():
         layer_name, Layer_count, total_length= key, update_params['send_length'], update_params['layer_length']
         print("layer_name, Layer_count, total_length", layer_name, Layer_count, total_length)
         if(c_params.received_length == 0 and  Layer_count==1):
+            print("first if")
             COMPLETE = False
             c_params.model_id = update_params['model_id']
-            c_params.params[layer_name]= torch.tensor(value)
+            c_params.params[layer_name] = torch.tensor(value)
+            c_params.bid[layer_name] = bid_score
             c_params.received_length += 1
             c_params.params_length = total_length
         elif(c_params.received_length+1 ==  total_length and Layer_count == total_length):
+            print("second if")
             c_params.params[layer_name]= torch.tensor(value)
+            c_params.bid[layer_name] = bid_score
             c_params.received_length = Layer_count
             print("Recived all layers for client: ", c_params.client_key)
             COMPLETE = True
+            print("bids: ", c_params.bid)
+            c_params.received_length = 0
             ALL_PARAMS_CNT +=1
 
         elif(c_params.received_length+1 ==  Layer_count):
+            print("third if")
             c_params.params[layer_name]= torch.tensor(value)
+            c_params.bid[layer_name] = bid_score
             c_params.received_length = Layer_count
             COMPLETE = False
             
         else:
+            print("else")
+            print(f"Wrong chunk: {c_params.received_length}/ {c_params.params_length}")
             return jsonify({'iteration': -1, 'Message': 'Wrong chunck send aborted posting params.'})
 
     # c_params.mem_size=update_params['mem_size']
@@ -315,56 +329,63 @@ def post_params():
     # Set Global Update Count
     UPDATE_COUNT += update_params['update_count']
 
-    if (ALL_PARAMS_CNT)==1:
-        U_TIME_STAMP=datetime.now()+timedelta(seconds=WTS)
+    if N_CLIENTS >1:
+        if (ALL_PARAMS_CNT)>=1 and ALL_PARAMS_CNT <N_CLIENTS and COMPLETE:
+            U_TIME_STAMP=datetime.now()+timedelta(seconds=WTS)
+            print(f"Waiting time stamap: {str(U_TIME_STAMP)}")
+    else:
+        if (ALL_PARAMS_CNT) ==1 and COMPLETE:
+            U_TIME_STAMP=datetime.now()+timedelta(seconds=0)
+            print(f"Waiting time stamap: {str(U_TIME_STAMP)}")
+
 
     # Execute Federated Averaging if Accumulated Params is full
-    
-    if (ALL_PARAMS_CNT ==N_CLIENTS or U_TIME_STAMP<datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
-        sumt= now() # start time of model updation 
-        data=[]
-        print("Complete? ", COMPLETE)
-        MODEL_LOCK = True
-        print("Model lock...")
-        print("Updating global model with clients params: ", len(ALL_PARAMS))
-        list_of_params =   collect_params()
-        if(len(list_of_params)>0): 
-            data.append([f'\nUpdating global parameters with params from {len(list_of_params)} client.'])
-            set_model = update_model(list_of_params=list_of_params)
+    if not U_TIME_STAMP == None:
+        if (ALL_PARAMS_CNT ==N_CLIENTS or U_TIME_STAMP < datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+            sumt= now() # start time of model updation 
+            data=[]
+            print("Complete? ", COMPLETE)
+            MODEL_LOCK = True
+            print("Model lock...")
+            print("Updating global model with clients params: ", len(ALL_PARAMS))
+            list_of_params =   collect_params()
+            if(len(list_of_params)>0): 
+                data.append([f'\nUpdating global parameters with params from {len(list_of_params)} client.'])
+                set_model = update_model(list_of_params=list_of_params)
+                
+                for key, value in set_model.items():
+                    GLOBAL_MODEL.model[key] = torch.tensor(value)
+                
+                # Empty Accumulated Params
+                ALL_PARAMS={}
+                ALL_PARAMS_CNT = 0
+                print("Cleared All Params: ", len(ALL_PARAMS))
+                # Save Model
+                with open(f'./models/{MODEL_NAME}.json', 'w') as f:
+                    json.dump(modman.convert_tensor_to_list(GLOBAL_MODEL.model), f)
+                # RETURN RESPONSE
+                eumt = now()
+                UMT.append(eumt-sumt)
+                print('Updation time:->', eumt-sumt)
+                data.append([f'Time taken for updation:-> {eumt-sumt}'])
+                data.append([f'iteration: {ITERATION} Updated Global Model Params Complete.'])
+                if Log:
+                    modman.csv_writer(path=path, data=data)
+                MODEL_LOCK = False
+                print("Release lock...")
+                return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Updated Global Model Params.'})
+            else: 
+                eumt = now()
+                UMT.append(eumt-sumt)
+                print('Updation time:->', eumt-sumt)
+                print('Could not update the model due to receiving invalid params.')
+                data.append(f'iteration: {ITERATION} Error! Global Model Params Updation Couldn\'t Complete.')
+                if Log:
+                    modman.csv_writer(path=path, data=data)
+                MODEL_LOCK = False
+                print("Release lock...")
+                return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Could not update the model due to receiving invalid params.'})
             
-            for key, value in set_model.items():
-                GLOBAL_MODEL.model[key] = torch.tensor(value)
-            
-            # Empty Accumulated Params
-            ALL_PARAMS={}
-            ALL_PARAMS_CNT = 0
-            print("Cleared All Params: ", len(ALL_PARAMS))
-            # Save Model
-            with open(f'./models/{MODEL_NAME}.json', 'w') as f:
-                json.dump(modman.convert_tensor_to_list(GLOBAL_MODEL.model), f)
-            # RETURN RESPONSE
-            eumt = now()
-            UMT.append(eumt-sumt)
-            print('Updation time:->', eumt-sumt)
-            data.append([f'Time taken for updation:-> {eumt-sumt}'])
-            data.append([f'iteration: {ITERATION} Updated Global Model Params Complete.'])
-            if Log:
-                modman.csv_writer(path=path, data=data)
-            MODEL_LOCK = False
-            print("Release lock...")
-            return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Updated Global Model Params.'})
-        else: 
-            eumt = now()
-            UMT.append(eumt-sumt)
-            print('Updation time:->', eumt-sumt)
-            print('Could not update the model due to receiving invalid params.')
-            data.append(f'iteration: {ITERATION} Error! Global Model Params Updation Couldn\'t Complete.')
-            if Log:
-                modman.csv_writer(path=path, data=data)
-            MODEL_LOCK = False
-            print("Release lock...")
-            return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Could not update the model due to receiving invalid params.'})
-        
     # RETURN RESPONSE
     return jsonify({'iteration': ITERATION,'n_clients':N_CLIENTS, 'Message': 'Collected Model Params.'})
 

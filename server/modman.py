@@ -119,3 +119,33 @@ def increment_path(path, exist_ok=False, sep='', mkdir=False):
     if not dir.exists() and mkdir:
         dir.mkdir(parents=True, exist_ok=True)  # make directory
     return path
+
+
+
+def baffle_update(list_of_params):
+    print("Federated averaging with clients# ", len(list_of_params))
+    if(len(list_of_params)<1):
+        print("Error gradient list is empty")
+        return {}
+    average_gradient={}
+    max={}
+    total_sample=0
+    print(f"number of client {str(len(list_of_params))}")
+    for indices in range(len(list_of_params)):
+        keys = list(list_of_params[indices][0].keys())
+        if indices == 0:
+            for key in keys:
+                max[key]=[list_of_params[indices][1][key], indices]
+            # print("Initial: ", max)
+        else:
+            for key in keys:
+                # print(indices)
+                # print(max[key][0],list_of_params[indices][1][key])
+                if max[key][0]<list_of_params[indices][1][key]:
+                    max[key]=[list_of_params[indices][1][key], indices]
+    
+    print("final", max)
+    keys = list(max.keys())
+    for key in keys:
+        average_gradient[key] = list_of_params[indices][0][key]
+    return average_gradient
