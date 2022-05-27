@@ -42,7 +42,7 @@ URL = "http://localhost:5500/api/model/"  # Un comment this line if you wanna te
 
 ip_address = "172.16.26.15"  # server macine ip address
 # API endpoint
-# URL = "http://"+ip_address+":5500/api/model/"
+URL = "http://"+ip_address+":5500/api/model/"
 
 # ..
 
