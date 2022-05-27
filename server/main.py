@@ -14,7 +14,8 @@ class CParamas:
     params = None
     bid = None
     params_length = None
-    received_length = 0
+    received_length = None
+
     # mem_size = None
 
 class G_model:
@@ -174,6 +175,62 @@ def get_lock():
     print("inside lock")
     global MODEL_LOCK
     global MODEL_COMPLETE
+    global ALL_PARAMS
+    global GLOBAL_MODEL
+    global U_TIME_STAMP #updating time stamp
+    global WTS #waiting time stamp
+    global N_CLIENTS
+    global N_PUSH
+    global UPDATE_COUNT
+    global ITERATION
+    global MODEL_LOCK
+    global COMPLETE
+    global ALL_PARAMS_CNT
+    if not U_TIME_STAMP == None:
+        if (ALL_PARAMS_CNT == N_CLIENTS or U_TIME_STAMP < datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+            print(f'Parameters received from #{str(ALL_PARAMS_CNT)} Number of clients participated in the learning #{str(N_CLIENTS)}')
+            sumt= now() # start time of model updation 
+            data=[]
+            print("Complete? ", COMPLETE)
+            MODEL_LOCK = True
+            print("Model lock...")
+            print("Updating global model with clients params: ", len(ALL_PARAMS))
+            list_of_params =   collect_params()
+            if(len(list_of_params)>0): 
+                data.append([f'\nUpdating global parameters with params from {len(list_of_params)} client.'])
+                set_model = update_model(list_of_params=list_of_params)
+                
+                for key, value in set_model.items():
+                    GLOBAL_MODEL.model[key] = torch.tensor(value)
+                
+                # Empty Accumulated Params
+                ALL_PARAMS={}
+                ALL_PARAMS_CNT = 0
+                print("Cleared All Params: ", len(ALL_PARAMS))
+                # Save Model
+                with open(f'./models/{MODEL_NAME}.json', 'w') as f:
+                    json.dump(modman.convert_tensor_to_list(GLOBAL_MODEL.model), f)
+                # RETURN RESPONSE
+                eumt = now()
+                UMT.append(eumt-sumt)
+                print('Updation time:->', eumt-sumt)
+                data.append([f'Time taken for updation:-> {eumt-sumt}'])
+                data.append([f'iteration: {ITERATION} Updated Global Model Params Complete.'])
+                if Log:
+                    modman.csv_writer(path=path, data=data)
+                MODEL_LOCK = False
+                print("Release lock...")
+                # return jsonify({'iteration': ITERATION, 'n_clients':len(list_of_params), 'Message': 'Updated Global Model Params.'})
+            else: 
+                eumt = now()
+                UMT.append(eumt-sumt)
+                print('Updation time:->', eumt-sumt)
+                print('Could not update the model due to receiving invalid params.')
+                data.append(f'iteration: {ITERATION} Error! Global Model Params Updation Couldn\'t Complete.')
+                if Log:
+                    modman.csv_writer(path=path, data=data)
+                MODEL_LOCK = False
+                print("Release lock...")
     payload = {
         'model_name': MODEL_NAME,
         'lock': MODEL_LOCK,
@@ -287,6 +344,8 @@ def post_params():
         c_params.model_id = update_params['model_id']
         c_params.params={}
         c_params.bid={}
+        c_params.received_length = 0
+        c_params.params_length = 0
         ALL_PARAMS[c_key]=c_params
     c_params = ALL_PARAMS[c_key]
     model_chunck = update_params['model']
@@ -339,6 +398,9 @@ def post_params():
     del c_params
     # Set Global Update Count
     UPDATE_COUNT += update_params['update_count']
+    if ALL_PARAMS_CNT == 1 and COMPLETE:
+        MODEL_LOCK = True
+        print("Model lock after receiving update from one client...")
 
     if N_CLIENTS >1:
         if (ALL_PARAMS_CNT)>=1 and ALL_PARAMS_CNT <N_CLIENTS and COMPLETE:
@@ -352,7 +414,8 @@ def post_params():
 
     # Execute Federated Averaging if Accumulated Params is full
     if not U_TIME_STAMP == None:
-        if (ALL_PARAMS_CNT ==N_CLIENTS or U_TIME_STAMP < datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+        if (ALL_PARAMS_CNT == N_CLIENTS or U_TIME_STAMP < datetime.now()) and COMPLETE:   # U_TIME_STAMP<datetime.now() or
+            print(f'Parameters received from #{str(ALL_PARAMS_CNT)} Number of clients participated in the learning #{str(N_CLIENTS)}')
             sumt= now() # start time of model updation 
             data=[]
             print("Complete? ", COMPLETE)
